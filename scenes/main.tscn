@@ -1,0 +1,65 @@
+[gd_scene format=3 uid="uid://8swtcs3ciqqn"]
+
+[ext_resource type="Script" uid="uid://bapdqwd1idh8c" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/spell_base.tscn" id="2_spell_base"]
+[ext_resource type="Shader" uid="uid://nr4nscakavkp" path="res://shaders/debug_floor.gdshader" id="3_floor_shader"]
+[ext_resource type="PackedScene" path="res://scenes/hud/rune_bar.tscn" id="4_rune_bar"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="5_player"]
+[ext_resource type="PackedScene" path="res://scenes/hud/inventory.tscn" id="6_inventory"]
+[ext_resource type="PackedScene" path="res://scenes/hud/rune_drag.tscn" id="7_drag"]
+
+[sub_resource type="Environment" id="Environment_ambient"]
+background_mode = 1
+background_color = Color(0.05, 0.05, 0.07, 1)
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.85
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_floor"]
+render_priority = 0
+shader = ExtResource("3_floor_shader")
+shader_parameter/color_a = Color(0.12, 0.13, 0.15, 1)
+shader_parameter/color_b = Color(0.2, 0.22, 0.26, 1)
+shader_parameter/line_color = Color(0.35, 0.55, 0.7, 1)
+shader_parameter/cell_size = 1.0
+shader_parameter/line_width = 0.035
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+material = SubResource("ShaderMaterial_floor")
+size = Vector2(60, 60)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
+size = Vector3(60, 0.2, 60)
+
+[node name="Main" type="Node3D" unique_id=697912110]
+script = ExtResource("1_main")
+spell_scene = ExtResource("2_spell_base")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=626116114]
+environment = SubResource("Environment_ambient")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=905863795]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 8, 0)
+light_energy = 0.9
+shadow_enabled = true
+
+[node name="DebugFloor" type="StaticBody3D" parent="." unique_id=1622357776]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="DebugFloor" unique_id=2146302325]
+mesh = SubResource("PlaneMesh_floor")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DebugFloor" unique_id=471319283]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+shape = SubResource("BoxShape3D_floor")
+
+[node name="Player" parent="." unique_id=1290050708 instance=ExtResource("5_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.5, 0)
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=927474971]
+
+[node name="Inventory" parent="HUD" instance=ExtResource("6_inventory")]
+
+[node name="RuneBar" parent="HUD" instance=ExtResource("4_rune_bar")]
+
+[node name="RuneDrag" parent="HUD" instance=ExtResource("7_drag")]

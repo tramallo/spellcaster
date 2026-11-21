@@ -1,0 +1,11 @@
+# Godot 4+ local cache / imported binaries
+.godot/
+
+# Local editor / OS junk
+*.translation
+.mono/
+data_*/
+export/
+*.tmp
+.DS_Store
+Thumbs.db
