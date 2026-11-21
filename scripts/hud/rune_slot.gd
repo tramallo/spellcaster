@@ -60,8 +60,13 @@ func set_rune(id: String) -> void:
 		_name_label.modulate = Color(0.92, 0.78, 0.48, 1.0)
 		_glyph.text = RuneCatalog.glyph(rune_id)
 		_glyph.modulate = Color(0.95, 0.82, 0.45, 1.0)
-		_charge_bar.visible = rune_id == "acceleration"
-		if rune_id != "acceleration":
+		var shows_charge := rune_id == "acceleration" or rune_id == "density"
+		_charge_bar.visible = shows_charge
+		if shows_charge:
+			set_charge(1.0 if rune_id == "density" else 0.0)
+		elif rune_id == "mana" or rune_id == "fire":
+			set_mana(0.0)
+		else:
 			_value_label.visible = false
 			set_charge(0.0)
 
@@ -87,16 +92,31 @@ func set_pressed(pressed: bool) -> void:
 	modulate = Color(1.15, 1.05, 0.9, 1.0) if pressed else Color.WHITE
 
 
-func set_charge(speed: float) -> void:
+## Shows the accumulated mana amount (in radius units) on the mana rune.
+func set_mana(amount: float) -> void:
+	if _value_label == null:
+		return
+	if rune_id != "mana" and rune_id != "fire":
+		return
+	# Only the hotbar shows the live amount; inventory copies stay clean.
+	_value_label.visible = slot_kind == "hotbar"
+	_value_label.text = "%.3f" % amount
+
+
+func set_charge(value: float) -> void:
 	if _charge_bar == null:
 		return
-	if rune_id != "acceleration":
+	if rune_id != "acceleration" and rune_id != "density":
 		_value_label.visible = false
 		return
-	_value_label.visible = speed > 0.0 or _pressed
-	_value_label.text = "%.1f" % speed
+	_value_label.visible = value > 0.0 or _pressed or rune_id == "density"
+	_value_label.text = "%.1f" % value
 	_charge_bar.max_value = 1.0
-	_charge_bar.value = speed / (speed + 10.0)
+	if rune_id == "density":
+		# 1 = natural; fill grows as density rises.
+		_charge_bar.value = 1.0 - (1.0 / maxf(value, 1.0))
+	else:
+		_charge_bar.value = value / (value + 10.0)
 
 
 func _on_gui_input(event: InputEvent) -> void:

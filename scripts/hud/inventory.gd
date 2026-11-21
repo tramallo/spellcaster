@@ -56,7 +56,8 @@ func _build_slots() -> void:
 		slot.slot_kind = "inventory"
 		slot.slot_index = i
 		slot.add_to_group("rune_slots")
-		slot.setup("", "")
+		# Fire starts in the first inventory slot; drag it to the hotbar to use it.
+		slot.setup("", "fire" if i == 0 else "")
 		slot.set_drag_enabled(false)
 		_slots.append(slot)
 

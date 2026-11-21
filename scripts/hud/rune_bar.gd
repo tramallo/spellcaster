@@ -14,7 +14,7 @@ func _ready() -> void:
 
 	_apply_wood_theme()
 	var keys := ["Q", "E", "R", "T"]
-	var start_runes := ["mana", "acceleration", "", ""]
+	var start_runes := ["mana", "acceleration", "density", "spike"]
 	for i in _slots.size():
 		var slot: Node = _slots[i]
 		slot.slot_kind = "hotbar"
@@ -46,10 +46,27 @@ func update_acceleration(speed: float) -> void:
 		slot.set_charge(speed)
 
 
-func reset_charges() -> void:
-	var slot := find_slot_by_rune("acceleration")
+func update_mana(amount: float) -> void:
+	# Every rune that summons mana (mana, fire) shows the accumulated amount.
+	for slot in _slots:
+		if slot.rune_id == "mana" or slot.rune_id == "fire":
+			slot.set_mana(amount)
+
+
+func update_density(density_value: float) -> void:
+	var slot := find_slot_by_rune("density")
 	if slot != null:
-		slot.set_charge(0.0)
+		slot.set_charge(density_value)
+
+
+func reset_charges() -> void:
+	update_mana(0.0)
+	var accel := find_slot_by_rune("acceleration")
+	if accel != null:
+		accel.set_charge(0.0)
+	var density := find_slot_by_rune("density")
+	if density != null:
+		density.set_charge(1.0)
 	for s in _slots:
 		s.set_pressed(false)
 
