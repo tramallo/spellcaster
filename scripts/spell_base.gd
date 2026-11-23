@@ -13,12 +13,16 @@ enum Phase { CASTING, RELEASED, FIZZLED }
 const ALIGN_RATE := 12.0
 const ALIGN_MIN_SPEED := 0.5
 
-## Physics layers (1-based bit values): the world, characters, and spells summoned by a caster.
-const WORLD_LAYER := 1
-const CHARACTER_LAYER := 2
-const SUMMONED_LAYER := 4
-## Most depenetration steps per frame while holding a spell.
-const DEPENETRATION_PASSES := 4
+const PhysicsLayers = preload("res://scripts/physics_layers.gd")
+
+## A spell lives on the "magic" layer only, and collides with nothing but other magic things
+## (spells): not the floor, not the characters' bodies. It hurts a character through the
+## character's hurtboxes (see `hit_character`). A held spell has no collision at all.
+
+## Longest a released spell is nudged forward, in metres, to get clear of its caster's hurtboxes.
+const MAX_CLEARANCE_PUSH := 1.0
+## Size of each of those nudges, in metres.
+const CLEARANCE_STEP := 0.02
 
 ## Least starting mana a spell needs in order to exist.
 const MIN_FORM_MANA := 0.0005
@@ -104,8 +108,8 @@ var aimer: Node
 var _has_hit: bool = false
 ## Direction the spell was pointing (the aim) at the moment of release.
 var _launch_direction: Vector3 = Vector3.FORWARD
-## The body of the character holding this spell (ignored for collisions until it is released).
-var _caster: PhysicsBody3D
+## The character holding this spell.
+var _caster: Node
 var _shader_material: ShaderMaterial
 ## Current shape ("sphere" until a shape rune changes it) and the morph towards it:
 ## progress runs 0..1 over `shape_morph_time`, `_shape_t` is its smoothed version.
@@ -125,7 +129,7 @@ func _ready() -> void:
 		return
 
 	freeze = true
-	# Kinematic freeze: the held spell is moved by code and collides while it moves.
+	# Kinematic freeze: the held spell is moved by code (and has no collision while held).
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	gravity_scale = spell_gravity_scale
 	# Ignore the world/project default damping so speed isn't lost after the acceleration ramp.
@@ -134,11 +138,6 @@ func _ready() -> void:
 	angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
 	angular_damp = 0.0
 	continuous_cd = true
-	# Needed to know what a released spell touches (see _on_body_entered).
-	contact_monitor = true
-	max_contacts_reported = 8
-	body_entered.connect(_on_body_entered)
-
 	_mesh_instance.mesh = _mesh_instance.mesh.duplicate()
 	_collision_shape.shape = _collision_shape.shape.duplicate()
 	_sphere_shape = _collision_shape.shape as SphereShape3D
@@ -165,17 +164,14 @@ func _preview_start_radius() -> void:
 		sphere_shape.radius = start_radius
 
 
-## Starts holding this spell in front of `new_anchor` (the caster's fingertips). Summoned
-## spells use their own physics layer and collide with everything else (the world, other
-## characters, other spells); while held they ignore their own caster (the hand is inside it).
+## Starts holding this spell in front of `new_anchor` (the caster's fingertips). While held it
+## has no collision at all: it collides (see `release`) only once it is thrown.
 func begin_casting(new_anchor: Node3D, new_aimer: Node = null) -> void:
 	anchor = new_anchor
 	aimer = new_aimer
-	collision_layer = SUMMONED_LAYER
-	collision_mask = WORLD_LAYER | CHARACTER_LAYER | SUMMONED_LAYER
-	_caster = new_aimer as PhysicsBody3D
-	if _caster != null:
-		add_collision_exception_with(_caster)
+	collision_layer = 0
+	collision_mask = 0
+	_caster = new_aimer
 	_follow_anchor()
 
 
@@ -230,9 +226,7 @@ func _update_shape_morph(delta: float) -> void:
 		_apply_radius()
 
 
-## Moves the spell to its held position (back edge on the anchor, growing forward from it),
-## then lets the physics engine push it out of anything it overlaps, so a spell that grows
-## into the floor or a wall is corrected instead of passing through.
+## Moves the spell to its held position (back edge on the anchor, growing forward from it).
 func _follow_anchor() -> void:
 	if anchor == null or not is_instance_valid(anchor):
 		return
@@ -251,13 +245,6 @@ func _follow_anchor() -> void:
 	# The spell's back edge is on the hold point, so its centre is ahead of it (-Z) by the
 	# distance from the centre to the back of the shape.
 	global_transform = Transform3D(held_basis, hold_point - held_basis.z * get_back_extent())
-	# Zero motion: only the depenetration (recovery) part of the move happens.
-	for i in DEPENETRATION_PASSES:
-		var before := global_position
-		move_and_collide(Vector3.ZERO)
-		if global_position.is_equal_approx(before):
-			break
-
 
 ## After launch, a shaped spell keeps its point toward where it is going, like a dart, and
 ## does not tumble. It is left alone when it is almost still (resting, or just hit something).
@@ -292,16 +279,16 @@ func get_damage() -> float:
 	return mana_radius + acceleration_speed * damage_per_acceleration
 
 
-## A released spell touching something that can take damage (anything with a 	ake_damage
-## method) hurts it, once, and disappears despawn_delay_after_hit seconds later. Any other
-## touch (floor, props, other spells) does nothing. A spell that is still held hurts nobody.
-func _on_body_entered(body: Node) -> void:
+## Called by a hurtbox (a part of a character's body) the spell has entered. A released spell
+## hurts that character (anything with a `take_damage` method), once, and disappears
+## despawn_delay_after_hit seconds later. A spell that is still held hurts nobody.
+func hit_character(target: Node) -> void:
 	if phase != Phase.RELEASED:
 		return
-	if _has_hit or not body.has_method("take_damage"):
+	if _has_hit or not target.has_method("take_damage"):
 		return
 	_has_hit = true
-	body.take_damage(get_damage())
+	target.take_damage(get_damage())
 	get_tree().create_timer(despawn_delay_after_hit).timeout.connect(_disappear)
 
 
@@ -497,15 +484,41 @@ func release() -> void:
 	phase = Phase.RELEASED
 	anchor = null
 	aimer = null
-	if _caster != null and is_instance_valid(_caster):
-		remove_collision_exception_with(_caster)
+	# The hand holding the spell is inside the caster's hurtboxes: move the spell forward just
+	# enough to be clear of them, and only then give it its collision.
+	_move_clear_of_caster()
 	_caster = null
+	collision_layer = PhysicsLayers.MAGIC
+	collision_mask = PhysicsLayers.MAGIC
 	freeze = false
 	# A frozen body that code was moving (the spell follows the hand) takes the speed of that
 	# movement along when it unfreezes: start from rest, then the acceleration rune throws the
 	# spell at its speed the same instant (gravity and collisions decide the rest).
 	linear_velocity = _launch_direction * acceleration_speed
 	angular_velocity = Vector3.ZERO
+
+
+## Moves the spell along its launch direction, in small steps, until it no longer overlaps any
+## hurtbox of its caster (so it does not hit its own caster the moment it is thrown).
+func _move_clear_of_caster() -> void:
+	if _caster == null or not is_instance_valid(_caster) or _collision_shape.shape == null:
+		return
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _collision_shape.shape
+	query.collision_mask = PhysicsLayers.MAGIC
+	query.collide_with_bodies = false
+	query.collide_with_areas = true
+	var space := get_world_3d().direct_space_state
+	for step in int(MAX_CLEARANCE_PUSH / CLEARANCE_STEP):
+		query.transform = global_transform * _collision_shape.transform
+		var overlapping := false
+		for hit in space.intersect_shape(query, 32):
+			if hit["collider"].get("character") == _caster:
+				overlapping = true
+				break
+		if not overlapping:
+			return
+		global_position += _launch_direction * CLEARANCE_STEP
 
 
 func _apply_radius() -> void:

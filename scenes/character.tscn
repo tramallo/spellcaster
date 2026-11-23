@@ -1,28 +1,228 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://b0duw80yc8ugi"]
 
-[ext_resource type="Script" path="res://scripts/character.gd" id="1_character"]
+[ext_resource type="Script" uid="uid://c31sctw1uh57g" path="res://scripts/character.gd" id="1_character"]
 [ext_resource type="PackedScene" uid="uid://16rrgauxho64" path="res://assets/models/character/walking.fbx" id="2_model"]
 [ext_resource type="PackedScene" uid="uid://cgtx0lw8dei67" path="res://scenes/spell_base.tscn" id="3_spell"]
+[ext_resource type="Script" uid="uid://dpb36xnmmyf8b" path="res://scripts/hurtbox.gd" id="4_hurtbox"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.3
 height = 1.6
 
-[node name="Character" type="CharacterBody3D"]
-collision_layer = 2
-collision_mask = 3
+[sub_resource type="SphereShape3D" id="Sphere_Head"]
+radius = 0.125
+
+[sub_resource type="CapsuleShape3D" id="Capsule_Chest"]
+radius = 0.1640625
+height = 0.69924706
+
+[sub_resource type="CapsuleShape3D" id="Capsule_LeftArm"]
+radius = 0.0546875
+height = 0.32939923
+
+[sub_resource type="CapsuleShape3D" id="Capsule_RightArm"]
+radius = 0.055
+height = 0.32730147
+
+[sub_resource type="CapsuleShape3D" id="Capsule_LeftForearm"]
+radius = 0.05
+height = 0.3903268
+
+[sub_resource type="CapsuleShape3D" id="Capsule_RightForearm"]
+radius = 0.05
+height = 0.3863595
+
+[sub_resource type="CapsuleShape3D" id="Capsule_LeftLeg"]
+radius = 0.08
+height = 0.3579423
+
+[sub_resource type="CapsuleShape3D" id="Capsule_RightLeg"]
+radius = 0.08
+height = 0.358
+
+[sub_resource type="CapsuleShape3D" id="Capsule_LeftShin"]
+radius = 0.07
+height = 0.51648366
+
+[sub_resource type="CapsuleShape3D" id="Capsule_RightShin"]
+radius = 0.07
+height = 0.516
+
+[node name="Character" type="CharacterBody3D" unique_id=62724385]
 floor_snap_length = 0.2
 script = ExtResource("1_character")
 spell_scene = ExtResource("3_spell")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=661500715]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+visible = false
 shape = SubResource("CapsuleShape3D_body")
+debug_fill = false
 
-[node name="ModelRoot" type="Node3D" parent="."]
+[node name="ModelRoot" type="Node3D" parent="." unique_id=1420056028]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 
-[node name="Character" parent="ModelRoot" instance=ExtResource("2_model")]
+[node name="Character" parent="ModelRoot" unique_id=1816130882 instance=ExtResource("2_model")]
 
-[node name="CastPoint" type="Node3D" parent="."]
+[node name="HeadAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="2" unique_id=726390777]
+transform = Transform3D(1, -8.726602e-05, -2.0358675e-07, 8.726602e-05, 1, 2.7008355e-08, 2.0358493e-07, -2.7008355e-08, 1, -4.4224827e-05, 1.6007537, -0.0034075417)
+bone_name = "mixamorig_Head"
+bone_idx = 5
+
+[node name="Head" type="Area3D" parent="ModelRoot/Character/Skeleton3D/HeadAttachment" unique_id=182865908]
+transform = Transform3D(-1, 8e-06, 3e-06, 8e-06, 0.941122, 0.338066, 0, 0.338066, -0.941122, 1e-06, 0.092373, 0.033182)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/HeadAttachment/Head" unique_id=1258698413]
+transform = Transform3D(1, 1.5916157e-12, -7.3896445e-13, 3.996803e-12, 1, 2.9802322e-08, 2.8848035e-12, -2.9802322e-08, 1, 0.0004456588, -0.018000126, 0.01999998)
+shape = SubResource("Sphere_Head")
+
+[node name="ChestAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="3" unique_id=1918371827]
+transform = Transform3D(1, -9.841569e-05, -1.478803e-05, 9.948258e-05, 0.9926237, 0.12123627, 2.7473986e-06, -0.12123627, 0.9926237, -8.672558e-08, 1.097154, -0.012272865)
+bone_name = "mixamorig_Spine"
+bone_idx = 1
+
+[node name="Chest" type="Area3D" parent="ModelRoot/Character/Skeleton3D/ChestAttachment" unique_id=341119271]
+transform = Transform3D(-1, 1.2e-05, -3e-06, 1.1e-05, 0.990336, 0.138689, 4e-06, 0.138689, -0.990336, 3e-06, 0.249405, 0.034927)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/ChestAttachment/Chest" unique_id=1628390476]
+transform = Transform3D(1, 2.8244074e-12, -5.684342e-14, 1.7557622e-12, 1, 0, -3.103473e-11, 0, 1, 3.5142875e-09, -0.1566689, -0.0063218586)
+shape = SubResource("Capsule_Chest")
+
+[node name="LeftArmAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="4" unique_id=180790685]
+transform = Transform3D(3.128172e-07, 1, 8.837506e-05, 9.780008e-09, 8.841418e-05, -1, -1.0000001, 3.8853574e-07, -3.9569596e-08, 0.18757856, 1.4356718, -0.06171456)
+bone_name = "mixamorig_LeftArm"
+bone_idx = 8
+
+[node name="LeftArm" type="Area3D" parent="ModelRoot/Character/Skeleton3D/LeftArmAttachment" unique_id=2021355815]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0.137023, 0)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/LeftArmAttachment/LeftArm" unique_id=1992960149]
+transform = Transform3D(1, 2.938886e-15, 0, 8.920541e-15, 1, 0, 0, 0, 1, 3.5762787e-07, -0.026111335, 7.450581e-09)
+shape = SubResource("Capsule_LeftArm")
+debug_color = Color(0.94509804, 0, 0.5921569, 1)
+
+[node name="RightArmAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="5" unique_id=558182384]
+transform = Transform3D(-8.910233e-08, -0.99999994, 8.615106e-05, 8.1493944e-08, -8.616224e-05, -0.9999999, 0.99999994, -1.0586427e-07, 5.725998e-08, -0.18763746, 1.435639, -0.06171424)
+bone_name = "mixamorig_RightArm"
+bone_idx = 32
+
+[node name="RightArm" type="Area3D" parent="ModelRoot/Character/Skeleton3D/RightArmAttachment" unique_id=1315863271]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0.137023, 0)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/RightArmAttachment/RightArm" unique_id=568291262]
+transform = Transform3D(1, -4.802147e-10, -5.0448534e-13, 1.6225384e-09, 0.9999867, 1.498801e-14, 7.9225515e-13, -1.4033219e-13, 0.9999867, 3.5762787e-07, -0.02763158, 0)
+shape = SubResource("Capsule_RightArm")
+debug_color = Color(0.9490196, 0, 0.58431375, 1)
+
+[node name="LeftForearmAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="6" unique_id=188149671]
+transform = Transform3D(3.128172e-07, 1, 8.837506e-05, 9.780008e-09, 8.841418e-05, -1, -1.0000001, 3.8853574e-07, -3.9569596e-08, 0.46162537, 1.435696, -0.06171445)
+bone_name = "mixamorig_LeftForeArm"
+bone_idx = 9
+
+[node name="LeftForearm" type="Area3D" parent="ModelRoot/Character/Skeleton3D/LeftForearmAttachment" unique_id=1800742198]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0.25572, 0)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/LeftForearmAttachment/LeftForearm" unique_id=818089330]
+transform = Transform3D(1, 2.938886e-15, 0, 8.920541e-15, 1, 0, 0, 0, 1, 0, -0.057113886, 1.4901161e-08)
+shape = SubResource("Capsule_LeftForearm")
+debug_color = Color(0.9529412, 0, 0.5529412, 1)
+
+[node name="RightForearmAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="7" unique_id=1402727039]
+transform = Transform3D(-8.910233e-08, -0.99999994, 8.615106e-05, 8.1493944e-08, -8.616224e-05, -0.9999999, 0.99999994, -1.0586427e-07, 5.725998e-08, -0.46168423, 1.4356154, -0.06171427)
+bone_name = "mixamorig_RightForeArm"
+bone_idx = 33
+
+[node name="RightForearm" type="Area3D" parent="ModelRoot/Character/Skeleton3D/RightForearmAttachment" unique_id=1780738942]
+transform = Transform3D(0, 1e-06, -1, 0, 1, 1e-06, 1, 0, 0, 0, 0.25572, 0)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/RightForearmAttachment/RightForearm" unique_id=376731470]
+transform = Transform3D(1, -2.8368236e-10, -3.3395509e-13, 9.750355e-10, 0.999992, -7.275958e-12, 4.7606363e-13, 7.3896445e-12, 0.999992, 5.9604645e-07, -0.05897528, 0)
+shape = SubResource("Capsule_RightForearm")
+debug_color = Color(0.9529412, 0, 0.56078434, 1)
+
+[node name="LeftLegAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="8" unique_id=353887307]
+transform = Transform3D(-0.99998206, 0.0060261833, 7.583585e-05, -0.006026661, -0.99990124, -0.012699916, -7.036474e-07, -0.012700142, 0.99991935, 0.09124448, 0.9313555, -0.0005532281)
+bone_name = "mixamorig_LeftUpLeg"
+bone_idx = 55
+
+[node name="LeftLeg" type="Area3D" parent="ModelRoot/Character/Skeleton3D/LeftLegAttachment" unique_id=993137262]
+transform = Transform3D(-1, 0, 1e-06, 0, 1, 0, -1e-06, 0, -1, 0, 0.202997, 0)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/LeftLegAttachment/LeftLeg" unique_id=1495984707]
+transform = Transform3D(1, -9.943556e-08, -1.9326762e-12, 4.4485517e-08, 1, 0, 1.916419e-09, -1.9930303e-07, 1, 0.0060710385, 0.026432693, -4.6938658e-07)
+shape = SubResource("Capsule_LeftLeg")
+debug_color = Color(0.9490196, 0, 0.58431375, 1)
+
+[node name="RightLegAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="9" unique_id=854030331]
+transform = Transform3D(-0.99998176, -0.0060272287, -7.7059274e-05, 0.0060277213, -0.99990153, -0.012667188, -7.036431e-07, -0.012667422, 0.9999198, -0.09124458, 0.9313554, -0.0005533615)
+bone_name = "mixamorig_RightUpLeg"
+bone_idx = 60
+
+[node name="RightLeg" type="Area3D" parent="ModelRoot/Character/Skeleton3D/RightLegAttachment" unique_id=1502120343]
+transform = Transform3D(-1, 0, 1e-06, 0, 1, 0, -1e-06, 0, -1, 0, 0.202997, 0)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/RightLegAttachment/RightLeg" unique_id=1396858695]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.026, 0)
+shape = SubResource("Capsule_RightLeg")
+debug_color = Color(0.9490196, 0, 0.58431375, 1)
+
+[node name="LeftShinAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="10" unique_id=1459171786]
+transform = Transform3D(-0.9999833, -0.005812259, -0.0002853356, 0.005819256, -0.9987862, -0.048911374, -7.036724e-07, -0.048912205, 0.99880314, 0.09369108, 0.52540123, -0.005709414)
+bone_name = "mixamorig_LeftLeg"
+bone_idx = 56
+
+[node name="LeftShin" type="Area3D" parent="ModelRoot/Character/Skeleton3D/LeftShinAttachment" unique_id=1083158594]
+transform = Transform3D(-1, 0, 1e-06, 0, 1, 0, -1e-06, 0, -1, 0, 0.2105, 0)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/LeftShinAttachment/LeftShin" unique_id=149744146]
+transform = Transform3D(0.999994, 4.29238e-08, -1.0588366e-08, -5.7809615e-09, 0.9999985, 1.6391277e-07, -5.3675535e-09, -1.0803342e-07, 0.9999939, 0.005999975, 0.056245297, 0.0048239306)
+shape = SubResource("Capsule_LeftShin")
+debug_color = Color(0.9529412, 0, 0.5647059, 1)
+
+[node name="RightShinAttachment" type="BoneAttachment3D" parent="ModelRoot/Character/Skeleton3D" parent_id_path=PackedInt32Array(1816130882, 2052903142) index="11" unique_id=558289844]
+transform = Transform3D(-0.999983, 0.005811262, 0.00028406887, -0.0058182017, -0.99878454, -0.04894414, -7.0362876e-07, -0.048944965, 0.99880147, -0.0936916, 0.525401, -0.005696264)
+bone_name = "mixamorig_RightLeg"
+bone_idx = 61
+
+[node name="RightShin" type="Area3D" parent="ModelRoot/Character/Skeleton3D/RightShinAttachment" unique_id=1029909759]
+transform = Transform3D(-1, 0, 1e-06, 0, 1, 0, -1e-06, 0, -1, 0, 0.2105, 0)
+collision_layer = 2
+collision_mask = 2
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/Character/Skeleton3D/RightShinAttachment/RightShin" unique_id=388034815]
+transform = Transform3D(1, 9.834267e-11, -1.59352e-09, 4.1524117e-11, 1, 0, -1.2121006e-09, -2.0489097e-07, 1, 0, 0.056, 0.005)
+shape = SubResource("Capsule_RightShin")
+debug_color = Color(0.9529412, 0, 0.5647059, 1)
+
+[node name="CastPoint" type="Node3D" parent="." unique_id=2141630202]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1.2, -1.2)
+
+[editable path="ModelRoot/Character"]

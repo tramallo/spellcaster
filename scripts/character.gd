@@ -25,6 +25,14 @@ signal cast_status(mana_radius: float, acceleration_speed: float, density: float
 signal cast_ended
 
 const RuneCatalog = preload("res://scripts/runes/rune_catalog.gd")
+## The movement capsule reaches this far (metres) above the top of the head bone.
+const BODY_TOP_MARGIN := 0.02
+## Bones the movement capsule's bottom follows (its lowest point), and the one its top follows.
+const BODY_FOOT_BONES: Array[String] = [
+	"mixamorig_LeftFoot", "mixamorig_RightFoot", "mixamorig_LeftToeBase",
+	"mixamorig_RightToeBase", "mixamorig_LeftToe_End", "mixamorig_RightToe_End",
+]
+const BODY_HEAD_BONE := "mixamorig_HeadTop_End"
 
 ## The spell this character casts.
 @export var spell_scene: PackedScene
@@ -59,6 +67,7 @@ const CAST_END_MARGIN := 0.03
 
 @onready var _model_root: Node3D = $ModelRoot
 @onready var cast_point: Node3D = $CastPoint
+@onready var _body_shape: CollisionShape3D = $CollisionShape3D
 
 ## Health left. Starts full.
 var health: float = 0.0
@@ -90,6 +99,13 @@ var _holding_density: bool = false
 
 var _anim: AnimationPlayer
 var _skeleton: Skeleton3D
+## The movement capsule, resized every physics frame to the pose (see `_fit_body_capsule`).
+var _body_capsule: CapsuleShape3D
+var _head_bone: int = -1
+var _foot_bones: PackedInt32Array = PackedInt32Array()
+## Height of the lowest foot bone (character-local) in the rest pose: where the feet are when
+## the capsule's bottom is on the floor.
+var _rest_feet_y: float = 0.0
 var _cast_bones: PackedInt32Array = PackedInt32Array()
 var _cast_phase: CastPhase = CastPhase.NONE
 var _jumping: bool = false
@@ -448,6 +464,7 @@ func _physics_process(delta: float) -> void:
 			_play_anim("jump")
 	_jump_requested = false
 
+	_fit_body_capsule()
 	move_and_slide()
 	_update_animation(direction, sprinting)
 
@@ -473,6 +490,54 @@ func _setup_character_model() -> void:
 	_anim.animation_finished.connect(_on_animation_finished)
 	_play_idle()
 	_setup_cast_point(character)
+	if _skeleton != null:
+		_setup_body_capsule()
+
+
+## The movement capsule: its bottom follows the lowest foot and its top the head, so it shrinks
+## and expands with the pose (curled up in the air, it is small). Its width stays the same.
+func _setup_body_capsule() -> void:
+	var capsule := _body_shape.shape as CapsuleShape3D
+	if capsule == null:
+		return
+	# Every character resizes its own capsule: the shape must not be shared by the instances.
+	_body_capsule = capsule.duplicate() as CapsuleShape3D
+	_body_shape.shape = _body_capsule
+	_head_bone = _skeleton.find_bone(BODY_HEAD_BONE)
+	for bone_name in BODY_FOOT_BONES:
+		var bone := _skeleton.find_bone(bone_name)
+		if bone >= 0:
+			_foot_bones.append(bone)
+	if _head_bone < 0 or _foot_bones.is_empty():
+		push_warning("Head or foot bones not found; the movement capsule keeps its scene size")
+		_head_bone = -1
+		return
+	_rest_feet_y = INF
+	for bone in _foot_bones:
+		var rest_point := _skeleton.get_bone_global_rest(bone).origin
+		_rest_feet_y = minf(_rest_feet_y, to_local(_skeleton.to_global(rest_point)).y)
+	_fit_body_capsule()
+
+
+## Fits the movement capsule to the pose: bottom on the lowest foot (never below the character's
+## origin), top on the head. A capsule is never shorter than a sphere of its radius.
+func _fit_body_capsule() -> void:
+	if _head_bone < 0:
+		return
+	var top := _bone_height(_head_bone) + BODY_TOP_MARGIN
+	var lowest := INF
+	for bone in _foot_bones:
+		lowest = minf(lowest, _bone_height(bone))
+	var bottom := maxf(lowest - _rest_feet_y, 0.0)
+	var height := maxf(top - bottom, _body_capsule.radius * 2.0)
+	_body_capsule.height = height
+	_body_shape.position.y = bottom + height * 0.5
+
+
+## Height of a bone above the character's origin, in the current pose.
+func _bone_height(bone: int) -> float:
+	var point := _skeleton.get_bone_global_pose(bone).origin
+	return to_local(_skeleton.to_global(point)).y
 
 
 ## Makes the cast point node follow the fingertips (right after the skeleton has been posed).

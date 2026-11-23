@@ -15,7 +15,7 @@ const RUNE_ACTIONS := [
 ## Aiming: how far the crosshair looks, and which physics layers it can hit (the world and
 ## the characters).
 const AIM_RANGE := 500.0
-const AIM_COLLISION_MASK := 3
+const AIM_COLLISION_MASK := 1
 ## Closest an aimed-at surface can be to the aim pivot before the camera direction is used instead.
 const AIM_MIN_DISTANCE := 0.5
 
