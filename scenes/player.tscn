@@ -1,8 +1,13 @@
 [gd_scene format=3 uid="uid://dat1xmc858rpt"]
 
-[ext_resource type="PackedScene" path="res://scenes/character.tscn" id="1_character"]
+[ext_resource type="PackedScene" uid="uid://b0duw80yc8ugi" path="res://scenes/character.tscn" id="1_character"]
 [ext_resource type="PackedScene" path="res://scenes/player_controller.tscn" id="2_controller"]
 
-[node name="Player" instance=ExtResource("1_character")]
+[node name="Player" unique_id=1224094487 instance=ExtResource("1_character")]
 
-[node name="Controller" parent="." instance=ExtResource("2_controller")]
+[node name="CollisionShape3D" parent="." index="0" unique_id=661500715]
+visible = true
+
+[node name="Controller" parent="." index="3" unique_id=536826072 instance=ExtResource("2_controller")]
+
+[editable path="ModelRoot/Character"]
