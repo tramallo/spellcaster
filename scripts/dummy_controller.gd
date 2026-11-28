@@ -10,7 +10,7 @@ extends Node
 @export var spell_mana: float = 3.0
 @export var spell_speed: float = 1.0
 ## Mana from the reserve that each 1 of speed costs (the spell's mana_per_acceleration).
-@export var mana_per_speed: float = 1.0
+@export var mana_per_speed: float = 0.25
 @export var shape_rune: String = "spike"
 
 enum Step { WAIT_MANA, SUMMON, ACCELERATE, SHAPE }

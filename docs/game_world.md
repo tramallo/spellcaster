@@ -101,7 +101,7 @@ Who collides with whom (a layer's *mask* is the list of layers a thing looks at)
 
 `scripts/dummy_controller.gd` uses the same intent API as the player. It summons a spell with 3
 mana (Mana rune), adds 1 speed (Acceleration rune), turns it into a spike (Spike rune, after the
-0.3 s morph) and releases it, then starts the next one right away. Each throw costs 4 mana from
+0.3 s morph) and releases it, then starts the next one right away. Each throw costs 3.25 mana from
 its pool, and it waits until the pool holds that much (ether absorption refills it). It never
 aims: the spell leaves straight ahead of it, level, and gravity applies as to any spell. The
 dummy faces away from the player's start, so its spells fly away from him. A dead dummy stops

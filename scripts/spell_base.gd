@@ -63,13 +63,13 @@ const MANA_EPSILON := 1e-9
 ## Density distance below the cap (natural radius / min_radius) where the gain starts easing out.
 @export var density_soft_range: float = 1.0
 ## Speed gained per second while holding the acceleration rune. With mana_per_acceleration
-## this is also how much mana per second it costs the player's reserve (0.8 speed per second =
-## 0.8 mana per second).
-@export var acceleration_growth_per_second: float = 0.8
+## this sets how much mana per second it costs the player's reserve (11.5 speed per second x
+## 0.25 mana per speed = 2.875 mana per second).
+@export var acceleration_growth_per_second: float = 11.5
 ## Speed the acceleration rune starts at when first pressed (its minimum).
 @export var acceleration_start_speed: float = 0.1
 ## Mana from the player's reserve that each 1 of acceleration speed costs.
-@export var mana_per_acceleration: float = 1.0
+@export var mana_per_acceleration: float = 0.25
 ## Seconds a failed spell takes to dissolve (see `fizzle`).
 @export var fizzle_time: float = 0.35
 ## A spell that gets farther than this from the centre of the world (0, 0, 0), in any direction,

@@ -52,11 +52,12 @@ pool refills only by passive absorption (see `game_world.md`).
 
 ## Acceleration
 
-- Costs mana from the **pool**, not from the spell: 1 mana per 1 speed (`mana_per_acceleration`).
-  The spell's own mana, size, density and mass are not touched.
-- Pressed, it starts at 0.1 speed, paying 0.1 mana. If the pool cannot pay that, the spell fails.
-- Held, the speed grows 0.8 per second (`acceleration_growth_per_second`), which costs 0.8 mana
-  per second (1 speed takes about 1.1 s). If the pool cannot pay a step, the spell fails.
+- Costs mana from the **pool**, not from the spell: 0.25 mana per 1 speed
+  (`mana_per_acceleration`). The spell's own mana, size, density and mass are not touched.
+- Pressed, it starts at 0.1 speed, paying 0.025 mana. If the pool cannot pay that, the spell
+  fails.
+- Held, the speed grows 11.5 per second (`acceleration_growth_per_second`), which costs 2.875 mana
+  per second (1 speed takes about 0.08 s). If the pool cannot pay a step, the spell fails.
 - Releasing the key locks the speed. Pressing it again continues from the locked speed.
 - On release of the spell it gets its full speed at once, as a kick along its aim (no ramp);
   gravity and collisions decide the rest.
