@@ -4,13 +4,14 @@ extends Object
 ##  - "summon":  puts mana into the spell (held)
 ##  - "movement": changes how the spell moves on Release
 ##  - "density":  compresses the spell
-##  - "shape":    changes the spell's shape (`shape` = id in ShapeCatalog)
+##  - "shape":    sets the spell's shape (`shape` = id in ShapeCatalog)
 const RUNES := {
 	"mana": {"name": "Mana", "glyph": "◇", "kind": "summon"},
 	"fire": {"name": "Fire", "glyph": "▲", "kind": "summon"},
 	"acceleration": {"name": "Accelerate", "glyph": "≫", "kind": "movement"},
 	"density": {"name": "Density", "glyph": "◉", "kind": "density"},
 	"spike": {"name": "Spike", "glyph": "△", "kind": "shape", "shape": "pyramid"},
+	"cube": {"name": "Cube", "glyph": "□", "kind": "shape", "shape": "cube"},
 }
 
 

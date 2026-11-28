@@ -26,6 +26,8 @@ uniform float edge_glow : hint_range(0.0, 4.0) = 1.4;
 varying float wave_amount;
 // Position inside the polyhedron face the vertex belongs to (barycentric), for the edges.
 varying vec2 face_st;
+// Edge of the face that is not drawn (0 none, 1 a-c, 2 a-b, 3 b-c): a square face's diagonal.
+varying float face_hidden;
 
 void vertex() {
 	float t = TIME * wave_speed;
@@ -33,6 +35,7 @@ void vertex() {
 	if (morph_enabled) {
 		VERTEX = mix(VERTEX, vec3(UV, UV2.x), shape_morph) * shape_scale;
 		face_st = COLOR.rg;
+		face_hidden = COLOR.b;
 	}
 
 	float w1 = sin(VERTEX.x * wave_frequency + t)
@@ -67,7 +70,18 @@ void fragment() {
 	// Closeness to the nearest edge of the polyhedron face (1 on the edge, 0 away from it).
 	float edge = 0.0;
 	if (morph_enabled) {
-		float nearest = min(min(face_st.x, face_st.y), 1.0 - face_st.x - face_st.y);
+		float d_ac = face_st.x;
+		float d_ab = face_st.y;
+		float d_bc = 1.0 - face_st.x - face_st.y;
+		int hidden_edge = int(floor(face_hidden * 4.0 + 0.5));
+		if (hidden_edge == 1) {
+			d_ac = 1.0;
+		} else if (hidden_edge == 2) {
+			d_ab = 1.0;
+		} else if (hidden_edge == 3) {
+			d_bc = 1.0;
+		}
+		float nearest = min(min(d_ac, d_ab), d_bc);
 		edge = (1.0 - smoothstep(0.0, edge_width, nearest)) * shape_morph;
 	}
 	float density_glow = clamp(density_factor, 0.25, 40.0);

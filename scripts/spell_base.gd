@@ -29,6 +29,8 @@ const MIN_FORM_MANA := 0.0005
 ## A spell's mass is its mana (1 mana = 1 mass); this is the least it can have (physics needs
 ## a mass above 0).
 const MIN_MASS := 0.001
+## Smallest shortfall (mana) that counts as the reserve not being able to pay.
+const MANA_EPSILON := 1e-9
 
 ## Radius, in metres, that 1 mana makes a spell at density 1 (the conversion rate between
 ## mana and size). Density then scales the radius down from there.
@@ -111,9 +113,12 @@ var _launch_direction: Vector3 = Vector3.FORWARD
 ## The character holding this spell.
 var _caster: Node
 var _shader_material: ShaderMaterial
-## Current shape ("sphere" until a shape rune changes it) and the morph towards it:
+## Shape being shown ("sphere" until a shape rune sets one) and the morph towards it:
 ## progress runs 0..1 over `shape_morph_time`, `_shape_t` is its smoothed version.
+## `_shape_target` is the shape the spell was last set to: when it differs from `_shape_id`
+## the shown shape eases back to the sphere and the target forms from there.
 var _shape_id: String = "sphere"
+var _shape_target: String = "sphere"
 var _morph_progress: float = 1.0
 var _shape_t: float = 0.0
 var _sphere_shape: SphereShape3D
@@ -185,28 +190,34 @@ func _process(delta: float) -> void:
 	_follow_anchor()
 
 
-## Turns the spell into `new_shape` (an id from ShapeCatalog) with a short smooth morph from
-## the sphere. Only works while casting, and only once: a spell that already has a shape
-## keeps it (modifiers never reset a spell to an earlier state).
+## Sets the spell's shape to `new_shape` (an id from ShapeCatalog), replacing the one it has.
+## The result is the same however many times in a row it is set. The change is a short smooth
+## morph (a spell that already has a shape eases back to the sphere first). Only while casting.
 func set_shape(new_shape: String) -> void:
-	if phase != Phase.CASTING or _shape_id != "sphere" or new_shape == "sphere":
+	if phase != Phase.CASTING or new_shape == "sphere" or new_shape == _shape_target:
 		return
-	var morph_mesh := ShapeCatalog.morph_mesh(new_shape)
-	if morph_mesh == null or _shader_material == null:
+	if _shader_material == null or ShapeCatalog.morph_mesh(new_shape) == null:
 		return
+	_shape_target = new_shape
+	if _shape_id == "sphere":
+		_start_shape(new_shape)
 
+
+## Shows `new_shape` on the morph mesh, starting from the sphere.
+func _start_shape(new_shape: String) -> void:
 	_shape_id = new_shape
 	_morph_progress = 0.0
 	_shape_t = 0.0
-	_mesh_instance.mesh = morph_mesh
+	_mesh_instance.mesh = ShapeCatalog.morph_mesh(new_shape)
 	_mesh_instance.set_surface_override_material(0, _shader_material)
 	_shader_material.set_shader_parameter("morph_enabled", true)
 	_shader_material.set_shader_parameter("shape_morph", 0.0)
 	_apply_radius()
 
 
+## The shape the spell has been set to ("sphere" until a shape rune sets one).
 func get_shape() -> String:
-	return _shape_id
+	return _shape_target
 
 
 ## Distance from the spell's centre back to its rearmost point: the radius for a sphere,
@@ -216,14 +227,32 @@ func get_back_extent() -> float:
 
 
 func _update_shape_morph(delta: float) -> void:
-	if _shape_id == "sphere" or _morph_progress >= 1.0:
+	if _shape_id == "sphere":
 		return
-	_morph_progress = minf(_morph_progress + delta / maxf(shape_morph_time, 0.001), 1.0)
-	_shape_t = smoothstep(0.0, 1.0, _morph_progress)
-	_shader_material.set_shader_parameter("shape_morph", _shape_t)
+	var step := delta / maxf(shape_morph_time, 0.001)
+	if _shape_target != _shape_id:
+		# The shape is being replaced: the one shown eases back to the sphere (its collision
+		# is the sphere again from the first moment), then the new one forms.
+		var was_complete := _morph_progress >= 1.0
+		_morph_progress = maxf(_morph_progress - step, 0.0)
+		_apply_morph()
+		if was_complete:
+			_apply_radius()
+		if _morph_progress <= 0.0:
+			_start_shape(_shape_target)
+		return
+	if _morph_progress >= 1.0:
+		return
+	_morph_progress = minf(_morph_progress + step, 1.0)
+	_apply_morph()
 	if _morph_progress >= 1.0:
 		# Morph done: swap the collision from the sphere to the shape itself.
 		_apply_radius()
+
+
+func _apply_morph() -> void:
+	_shape_t = smoothstep(0.0, 1.0, _morph_progress)
+	_shader_material.set_shader_parameter("shape_morph", _shape_t)
 
 
 ## Moves the spell to its held position (back edge on the anchor, growing forward from it).
@@ -246,10 +275,10 @@ func _follow_anchor() -> void:
 	# distance from the centre to the back of the shape.
 	global_transform = Transform3D(held_basis, hold_point - held_basis.z * get_back_extent())
 
-## After launch, a shaped spell keeps its point toward where it is going, like a dart, and
-## does not tumble. It is left alone when it is almost still (resting, or just hit something).
+## After launch, every spell keeps its front toward where it is going, like a dart, and does
+## not tumble. It is left alone when it is almost still (resting, or just hit something).
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
-	if Engine.is_editor_hint() or phase != Phase.RELEASED or _shape_id == "sphere":
+	if Engine.is_editor_hint() or phase != Phase.RELEASED:
 		return
 	var velocity := state.linear_velocity
 	if velocity.length() < ALIGN_MIN_SPEED:
@@ -355,18 +384,19 @@ func _take_mana(requested: float) -> float:
 
 
 ## A newly summoned spell pays for its starting mana from its mana source (the player's
-## reserve). Returns false when the source has none left, so the spell cannot form at all.
-## (Props placed in a scene never call this and just keep their start_radius.)
+## reserve). Returns false, taking nothing, when the source holds less than that, so the spell
+## cannot form at all. (Props placed in a scene never call this and just keep their start_radius.)
 func draw_initial_mana() -> bool:
 	if mana_source == null or not is_instance_valid(mana_source):
 		return true
 
 	var start_mana := start_radius / maxf(radius_per_mana, 0.0001)
+	if "mana" in mana_source and mana_source.mana < start_mana:
+		return false
 	var granted: float = _take_mana(start_mana)
 	if granted < MIN_FORM_MANA:
 		return false
 
-	# When the reserve is nearly empty the spell starts smaller.
 	mana_radius = granted
 	radius = maxf(granted * radius_per_mana, 0.001)
 	_update_mass()
@@ -374,14 +404,16 @@ func draw_initial_mana() -> bool:
 	return true
 
 
-func grow_mana(delta: float) -> void:
+## Summons mana for `delta` seconds from the mana source (the player's reserve). Returns false
+## when the source cannot pay all of it: the spell has failed (see `fizzle`) and the caller
+## must fail it. Without a source the mana is unlimited.
+func grow_mana(delta: float) -> bool:
 	if phase != Phase.CASTING:
-		return
+		return true
 	var requested := mana_per_second * delta
-
-	# Mana is taken from the mana source (the player's reserve). When it runs low the summon
-	# slows down, down to nothing. Without a source it is unlimited.
 	var granted := _take_mana(requested)
+	if granted < requested - MANA_EPSILON:
+		return false
 
 	# New mana goes partly to size and partly to density: the size share is 1 for small spells
 	# and fades smoothly to 0 around `size_limit_mana`. The radius only grows by its share,
@@ -391,7 +423,7 @@ func grow_mana(delta: float) -> void:
 	radius += granted * radius_per_mana * size_share
 	_update_mass()
 	_apply_radius()
-
+	return true
 
 func densify(delta: float) -> void:
 	if phase != Phase.CASTING:
@@ -413,45 +445,44 @@ func densify(delta: float) -> void:
 	_apply_radius()
 
 
-## Takes the mana for `speed_gain` of acceleration speed from the mana source (the player's
-## reserve); the spell's own mana, size, density and mass are not touched. Returns the speed
-## it could actually pay for: all of `speed_gain` normally, less when the reserve runs low
-## (down to nothing when it is empty). With no source it is unlimited.
-func _pay_acceleration(speed_gain: float) -> float:
+## Pays for `speed_gain` of acceleration speed with mana from the mana source (the player's
+## reserve); the spell's own mana, size, density and mass are not touched. Returns false when
+## the source cannot pay all of it (it gives what it has left): the spell has failed.
+func _pay_acceleration(speed_gain: float) -> bool:
 	var cost := speed_gain * mana_per_acceleration
 	if cost <= 0.0:
-		return speed_gain
-	var granted := _take_mana(cost)
-	return granted / mana_per_acceleration
+		return true
+	return _take_mana(cost) >= cost - MANA_EPSILON
 
 
 ## The acceleration rune was pressed. The first time it starts at `acceleration_start_speed`
 ## (and pays for it); later presses continue from the locked value for free. Returns false when
-## the reserve cannot pay the minimum start: nothing happens.
+## the reserve cannot pay the minimum start: the spell has failed.
 func begin_acceleration() -> bool:
 	if phase != Phase.CASTING:
 		return true
 	if acceleration_speed > 0.0:
 		return true
-	var start_cost := acceleration_start_speed * mana_per_acceleration
-	if mana_source != null and is_instance_valid(mana_source) and "mana" in mana_source \
-			and mana_source.mana < start_cost:
+	if not _pay_acceleration(acceleration_start_speed):
 		return false
-	_pay_acceleration(acceleration_start_speed)
 	acceleration_speed = acceleration_start_speed
 	return true
 
 
-## Raises the acceleration speed while the rune is held, paying with the player's reserve. It
-## slows down when the reserve runs low and stops when it is empty (like summoning does).
-func charge_acceleration(delta: float) -> void:
+## Raises the acceleration speed while the rune is held, paying with the player's reserve.
+## Returns false when the reserve cannot pay: the spell has failed.
+func charge_acceleration(delta: float) -> bool:
 	if phase != Phase.CASTING:
-		return
+		return true
 	if acceleration_speed <= 0.0 and not begin_acceleration():
-		return
-	acceleration_speed += _pay_acceleration(acceleration_growth_per_second * delta)
+		return false
+	var gain := acceleration_growth_per_second * delta
+	if not _pay_acceleration(gain):
+		return false
+	acceleration_speed += gain
+	return true
 
-## The spell failed (not used by any rune for now): it dissolves and all the
+## The spell failed (the reserve could not pay a rune): it dissolves and all the
 ## mana invested in it is lost. It deals no damage and is gone after `fizzle_time` seconds.
 func fizzle() -> void:
 	if phase != Phase.CASTING:

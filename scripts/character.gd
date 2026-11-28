@@ -16,7 +16,7 @@ signal mana_changed(current: float, maximum: float)
 signal health_changed(current: float, maximum: float)
 ## Emitted once, when the health reaches 0 and the character dies.
 signal died
-## Emitted when the spell being cast fails (no rune causes it for now):
+## Emitted when the spell being cast fails (the mana reserve could not pay what a rune asked):
 ## it dissolves and the mana invested in it is lost.
 signal spell_fizzled
 ## Emitted on every frame while a spell is being cast, with its charges.
@@ -341,7 +341,8 @@ func _begin_acceleration() -> void:
 	if not _has_casting_spell():
 		return
 	if not _spell.begin_acceleration():
-		# Not enough mana in the reserve for the minimum start: nothing happens.
+		# The reserve could not pay the minimum start: the spell fails.
+		_fizzle_spell()
 		return
 	_holding_acceleration = true
 	_emit_cast_status()
@@ -367,10 +368,13 @@ func _fizzle_spell() -> void:
 ## Feeds the held runes into the spell being cast.
 func _charge_spell(delta: float) -> void:
 	# Mana and Fire both summon mana; holding both together still grows only once.
-	if _holding_mana or _holding_fire:
-		_spell.grow_mana(delta)
-	if _holding_acceleration:
-		_spell.charge_acceleration(delta)
+	if (_holding_mana or _holding_fire) and not _spell.grow_mana(delta):
+		_fizzle_spell()
+		return
+	# A spell fails when the reserve cannot pay what a rune asks (see `_fizzle_spell`).
+	if _holding_acceleration and not _spell.charge_acceleration(delta):
+		_fizzle_spell()
+		return
 	if _holding_density:
 		_spell.densify(delta)
 	_emit_cast_status()
